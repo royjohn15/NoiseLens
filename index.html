@@ -372,11 +372,12 @@ function levelZoneColor(L){return L>=85?C.crit:L>=70?C.warn:C.good;}
 /* ================= Canvas helpers ================= */
 function setup(cv){
   const r=cv.getBoundingClientRect(), d=window.devicePixelRatio||1;
-  // the height attribute doubles as bitmap size, so keep the intended CSS height in data-h
-  if(!cv.dataset.h && cv.hasAttribute("height")) cv.dataset.h=cv.getAttribute("height");
-  const h=cv.dataset.h?+cv.dataset.h:r.height;
-  if(cv.width!==Math.round(r.width*d)||cv.height!==Math.round(h*d)){cv.width=Math.round(r.width*d);cv.height=Math.round(h*d);cv.style.height=h+"px";}
-  const g=cv.getContext("2d"); g.setTransform(d,0,0,d,0,0); return {g,w:r.width,h,hidden:r.width<20};
+  // intended CSS height is captured once at load (data-h); the height attribute becomes the bitmap size after drawing
+  // canvases without data-h (the ring) are sized by CSS alone; never resize while the tab is hidden
+  const h=cv.dataset.h?+cv.dataset.h:r.height, g=cv.getContext("2d");
+  if(r.width<20) return {g,w:r.width,h,hidden:true};
+  if(cv.width!==Math.round(r.width*d)||cv.height!==Math.round(h*d)){cv.width=Math.round(r.width*d);cv.height=Math.round(h*d);if(cv.dataset.h)cv.style.height=h+"px";}
+  g.setTransform(d,0,0,d,0,0); return {g,w:r.width,h,hidden:false};
 }
 function niceTicks(min,max,n){const span=max-min||1,step0=span/n,mag=Math.pow(10,Math.floor(Math.log10(step0))),err=step0/mag;
   const step=(err>=7.5?10:err>=3.5?5:err>=1.5?2:1)*mag,out=[];for(let v=Math.ceil(min/step)*step;v<=max+1e-9;v+=step)out.push(+v.toFixed(10));return out;}
@@ -813,6 +814,7 @@ async function start(){
 }
 $("startBtn").onclick=start;
 
+document.querySelectorAll("canvas[height]").forEach(c=>c.dataset.h=c.getAttribute("height"));
 readColors(); loadToday();
 if(S.cal!=null) setChip("chipCal","ok","Calibrated");
 renderLegend();
